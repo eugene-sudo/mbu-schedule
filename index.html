@@ -31,7 +31,8 @@
   .spinner{width:32px;height:32px;border:3px solid #e7e2d6;border-top-color:#12304f;border-radius:50%;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
   #help{display:none;max-width:300px;text-align:center;font-size:14px;line-height:1.6;color:#6b7280;padding:0 16px}
-  #help a{display:inline-block;margin-top:10px;background:#1f2328;color:#fff;text-decoration:none;border-radius:999px;padding:10px 18px;font-weight:600}
+  #help .main{display:inline-block;margin-top:12px;background:#12304f;color:#fff;border:0;border-radius:999px;padding:11px 26px;font-size:15px;font-weight:600}
+  #help a{display:inline-block;margin-top:12px;color:#2563eb;text-decoration:none;font-size:14px}
   #help button{margin-top:8px;border:0;background:none;color:#2563eb;font-size:14px}
 </style>
 </head>
@@ -47,16 +48,24 @@
   <div class="spinner" id="spin"></div>
   <div class="t" id="msg">載入中…</div>
   <div id="help">
-    畫面一直沒出來，通常是還沒登入公司 Google 帳號。<br>
-    請先用 Chrome 開一次並登入，再回到這裡。
-    <br><a id="open" target="_blank" rel="noopener">用 Chrome 開啟並登入</a>
-    <br><button onclick="location.reload()">已登入，重新載入</button>
+    <span id="helpTxt"></span>
+    <br><button class="main" onclick="location.reload()">重新載入</button>
+    <br><a id="open" rel="noopener"></a>
   </div>
 </div>
 
 <script>
   const f = document.getElementById('app');
-  document.getElementById('open').href = APP_URL;
+  const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const op = document.getElementById('open');
+  op.href = APP_URL;
+  if (IOS) {   // iPhone：不嵌入、直接打開 dashboard（同一個視窗），登入不會被擋
+    op.textContent = '直接開啟 dashboard ›';
+    document.getElementById('helpTxt').innerHTML = '畫面一直沒出來，可能是網路慢，或 iPhone 擋住了 Google 登入。<br>先按「重新載入」；還是不行就按下面的「直接開啟」。';
+  } else {
+    op.target = '_blank'; op.textContent = '用 Chrome 開啟並登入 ›';
+    document.getElementById('helpTxt').innerHTML = '畫面一直沒出來，可能是網路慢，或還沒登入公司 Google 帳號。<br>先按「重新載入」；還是不行就用 Chrome 開一次並登入。';
+  }
   f.src = APP_URL;
   let ready = false;
   /* dashboard 載入完成時會傳訊息過來，收到就把載入畫面收起來 */
@@ -68,16 +77,18 @@
       document.documentElement.style.setProperty('--bg', e.data.bg);
       try { localStorage.setItem('mbuShellTheme', JSON.stringify({ meta: e.data.meta, bg: e.data.bg })); } catch (x) {}
     }
-    if (e.data && e.data.mbu === 'ready' && !ready) {
+    /* boot＝dashboard 頁面已打開（已登入）；ready＝資料也載好了。任一個到了就收起載入畫面 */
+    if (e.data && (e.data.mbu === 'ready' || e.data.mbu === 'boot') && !ready) {
       ready = true; document.getElementById('cover').classList.add('hide');
     }
   });
-  /* 15 秒還沒載入：多半是沒登入或網路問題，顯示說明 */
+  /* 10 秒：提示還在載入；25 秒還沒打開：多半是登入或網路問題，顯示說明 */
+  setTimeout(() => { if (!ready) document.getElementById('msg').textContent = '還在載入，網路較慢請稍候…'; }, 10000);
   setTimeout(() => { if (!ready) {
     document.getElementById('msg').style.display = 'none';
     document.getElementById('spin').style.display = 'none';
     document.getElementById('help').style.display = 'block';
-  }}, 15000);
+  }}, 25000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
